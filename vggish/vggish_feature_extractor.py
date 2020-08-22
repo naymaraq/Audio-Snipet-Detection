@@ -42,7 +42,7 @@ def get_features(paths, verbose=True):
             print('Extracting featues for: {}'.format(p))
         input_data = vggish_input.wavfile_to_examples(p)
         feature = extract_vggish_features(sess, input_data, embedding_tensor, features_tensor)
-        featuresa.append(feature)
+        features.append(feature)
 
     for i in features:
         print(i.shape)
