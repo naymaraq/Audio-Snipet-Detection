@@ -1,4 +1,4 @@
-from vggish_feature_extractor import *
+from vggish.vggish_feature_extractor import *
 import vggish.vggish_input as vggish_input
 from scipy import spatial
 import matplotlib.pyplot as plt
