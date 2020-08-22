@@ -1,5 +1,6 @@
 from pydub import AudioSegment
 from numpy.random import randint
+import os
 
 class Snipet:
 
@@ -50,6 +51,10 @@ def generate_audio_segments(audo_file, n_segments, min_len, max_len, pattern_len
     starts = list(randint(low=0, high=duration_in_seconds-max_len, size=n_segments))
     ends = [s + randint(low=min_len, high=max_len) for s in starts]
 
+    SAVE_FOLDER = 'tracks/snipets'
+    if not os.path.exists(SAVE_FOLDER):
+        os.mkdir(SAVE_FOLDER)
+
     labels = []
     for i in range(n_segments):
 
@@ -64,24 +69,23 @@ def generate_audio_segments(audo_file, n_segments, min_len, max_len, pattern_len
         pattern = Snipet(s_, e_, audio[s_:e_])
 
         #negative snipets
-        neg_samples = negative_samples(pos_s=s_, pos_e=e_, pattern_len=pattern_len, low=0, high=duration_in_seconds-pattern_len, n=5)
+        neg_samples = negative_samples(pos_s=s_, pos_e=e_, pattern_len=pattern_len, low=0, high=duration_in_seconds-pattern_len, n=2)
         negative_snipets = [Snipet(s, e, audio[s:e]) for s,e in neg_samples] 
         
-
         #save snipet waves
         labels.append((f'pattern_{i}.wav', f'snipet_{i}.wav', 1))
         for j, neg_snip in enumerate(negative_snipets):
-            neg_snip.export(f'neg_pattern_{i}_{j}.wav', format="wav")
-            labels.append((f'neg_pattern_{i}_{j}.wav', f'snipet_{i}.wav', 0))
-        snipet.export(f'snipet_{i}.wav', format="wav")
-        pattern.export(f'pattern_{i}.wav', format="wav")
+            neg_snip.export(f'{SAVE_FOLDER}/neg_pattern_{i}_{j}.wav', format="wav")
+            labels.append((f'{SAVE_FOLDER}/neg_pattern_{i}_{j}.wav', f'snipet_{i}.wav', 0))
+        snipet.export(f'{SAVE_FOLDER}/snipet_{i}.wav', format="wav")
+        pattern.export(f'{SAVE_FOLDER}/pattern_{i}.wav', format="wav")
 
     #save meta info
-    with open('dataset.txt', "w") as f:
+    with open(f'{SAVE_FOLDER}/dataset.txt', "w") as f:
         for p, s, y in labels:
             f.write('\t'.join([p,s, str(y)]) + '\n')
 
-generate_audio_segments('../../tracks/reference.wav', 
+generate_audio_segments('tracks/reference.wav', 
                         n_segments=5, 
                         min_len=5, 
                         max_len=10, 
