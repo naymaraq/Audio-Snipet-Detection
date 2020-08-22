@@ -2,7 +2,10 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
-import vggish_input, vggish_slim, vggish_params, utils
+import vggish.vggish_input as vggish_input
+import vggish.vggish_slim as vggish_slim
+import vggish.vggish_params as vggish_params
+import utils
 from utils import wavefile_to_waveform
 from scipy import spatial
 import matplotlib.pyplot as plt
@@ -49,12 +52,12 @@ if __name__ == '__main__':
     sess, embedding_tensor, embedding_tensor, features_tensor  = vggish(model_path="vggish_model.ckpt")
 
     print('Extracting pattern features')
-    pat_input_data = vggish_input.wavfile_to_examples("pattern2.wav")
+    pat_input_data = vggish_input.wavfile_to_examples("tracks/pattern1.wav")
     pat_feature = extract_vggish_features(sess, pat_input_data, embedding_tensor, features_tensor)
 
 
     print("Extracting reference features")
-    ref_input_data = vggish_input.wavfile_to_examples("reference.wav")
+    ref_input_data = vggish_input.wavfile_to_examples("tracks/reference.wav")
     ref_feature = extract_vggish_features(sess, ref_input_data, embedding_tensor, features_tensor)
 
 
@@ -102,7 +105,7 @@ if __name__ == '__main__':
     #cax = divider.append_axes("right", size="5%", pad=0.05)
     #plt.colorbar(im, cax=cax)
 
-    plt.savefig('pattern2-result.png', dpi=150)
+    plt.savefig('pattern1-result.png', dpi=150)
 
 
 

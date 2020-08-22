@@ -19,8 +19,8 @@ import numpy as np
 import resampy
 from scipy.io import wavfile
 
-import mel_features
-import vggish_params
+import vggish.mel_features as mel_features
+import vggish.vggish_params as vggish_params
 from utils import wavefile_to_waveform
 
 
