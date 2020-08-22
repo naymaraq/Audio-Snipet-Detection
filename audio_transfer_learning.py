@@ -5,26 +5,12 @@ import tensorflow as tf
 import vggish.vggish_input as vggish_input
 import vggish.vggish_slim as vggish_slim
 import vggish.vggish_params as vggish_params
-import utils
-from utils import wavefile_to_waveform
+from utils import wavefile_to_waveform, softmax
 from scipy import spatial
 import matplotlib.pyplot as plt
 import datetime
 plt.style.use('ggplot')
 
-def softmax(x, T):
-    
-    x = x/T
-    orig_shape = x.shape
-    if len(x.shape) > 1:
-        x = np.exp(x-np.max(x,axis=-1).reshape(-1,1))
-        x = x / np.sum(x, axis= -1,keepdims=True)
-    else:
-        x = np.exp(x-np.max(x,axis=-1))
-        x = x / np.sum(x,keepdims=True)
-
-    assert x.shape == orig_shape
-    return x
 
 def vggish(model_path):
 
@@ -49,7 +35,7 @@ if __name__ == '__main__':
 
 
     print('Loading graph, Opening session')
-    sess, embedding_tensor, embedding_tensor, features_tensor  = vggish(model_path="vggish_model.ckpt")
+    sess, embedding_tensor, embedding_tensor, features_tensor  = vggish(model_path="models/vggish_model.ckpt")
 
     print('Extracting pattern features')
     pat_input_data = vggish_input.wavfile_to_examples("tracks/pattern1.wav")

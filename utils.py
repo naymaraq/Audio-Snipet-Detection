@@ -4,6 +4,21 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 from scipy.io import wavfile
 
+
+def softmax(x, T):
+    
+    x = x/T
+    orig_shape = x.shape
+    if len(x.shape) > 1:
+        x = np.exp(x-np.max(x,axis=-1).reshape(-1,1))
+        x = x / np.sum(x, axis= -1,keepdims=True)
+    else:
+        x = np.exp(x-np.max(x,axis=-1))
+        x = x / np.sum(x,keepdims=True)
+
+    assert x.shape == orig_shape
+    return x
+
 def wavefile_to_waveform(wav_file, features_type):
     data, sr = sf.read(wav_file)
     if features_type == 'vggish':
