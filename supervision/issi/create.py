@@ -9,7 +9,7 @@ if not os.path.exists(SAVE_FOLDER):
     os.mkdir(SAVE_FOLDER)
 
 labels, patterns, snipets, negative_snipets = generate_audio_segments('tracks/reference.wav',
-                                                                      n_segments=2,
+                                                                      n_segments=10000,
                                                                       min_len=5,
                                                                       max_len=10,
                                                                       pattern_len=2,
