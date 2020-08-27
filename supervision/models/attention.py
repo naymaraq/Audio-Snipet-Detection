@@ -34,18 +34,24 @@ class ISSIDataset(Dataset):
 class ISSINet(nn.Module):
 
     def __init__(self, n_filters,
-                       time_dim,
-                       embedding_dim,
                        attention='dot'):
         super(ISSINet, self).__init__()
 
         self.n_filters = n_filters
-        self.time_dim = time_dim
-        self.embedding_dim = embedding_dim
-
         self.attention = attention
-        self.conv_1 = nn.Conv1d(1, self.n_filters, kernel_size=(self.time_dim, self.embedding_dim), stride=1)
-        self.linear_1 = nn.Linear(in_features=2* self.n_filters, out_features=64)
+        self.conv = nn.Conv1d(1, self.n_filters, kernel_size=(2,2), stride=1)
+        self.max_pool = nn.MaxPool2d(kernel_size=(2,2), stride=(1,2))
+
+        embedding_dim = 189
+
+        if attention == 'multiplicative':
+            temp_tensor = torch.rand(embedding_dim, embedding_dim)
+            nn.init.xavier_uniform_(temp_tensor, gain=1.0)
+            self.attention_matrix = nn.Parameter(temp_tensor, requires_grad = True)
+        elif attention == 'additive':
+            pass
+
+        self.linear_1 = nn.Linear(in_features=embedding_dim*2, out_features=64)
         self.linear_2 = nn.Linear(in_features=64, out_features=1)
 
         self.dropout = nn.Dropout(0.3)
@@ -53,39 +59,53 @@ class ISSINet(nn.Module):
     def convolve(self, input):
         return self.conv_1(input)
 
-    def dot_product_attention(self, query, values):
-        query_shape = query.shape
-        scores = torch.matmul(query.view(-1, query_shape[2], query_shape[1]), values)
-        return scores
-
     def classifier(self, query, context):
         concat = torch.cat((query, context), dim=-1)
         concat = self.dropout(concat)
-        out = F.relu(self.linear_1(concat))
+        out = torch.tanh(self.linear_1(concat))
         out = self.linear_2(out)
         return out
 
-    def multiplicative_attention(self):
-        scores = None
+    def dot_product_attention(self, query, values):
+        scores = torch.matmul(values, query.transpose(2,1))
+        return scores
+
+    def multiplicative_attention(self, query, values):
+        w_s = torch.matmul(values, self.attention_matrix)
+        scores = torch.matmul(w_s, query.transpose(2, 1))
+        return scores
 
     def additive_attention(self):
         scores = None
 
     def forward(self, pattern, snipet):
 
-        convolved_pattern = torch.squeeze(self.conv_1(pattern), dim=-1)
-        convolved_snipet = torch.squeeze(self.conv_1(snipet), dim=-1)
+        convolved_pattern = torch.relu(self.conv(pattern))
+        convolved_pattern = convolved_pattern.transpose(1,2)
+        convolved_snipet = torch.relu(self.conv(snipet))
+        convolved_snipet = convolved_snipet.transpose(1,2)
+
+
+        q = self.max_pool(convolved_pattern)
+        vs = self.max_pool(convolved_snipet)
+
+        q = torch.flatten(q, start_dim=2)
+        vs = torch.flatten(vs, start_dim=2)
+
         if self.attention == 'dot':
-            scores = self.dot_product_attention(convolved_pattern, convolved_snipet)
+            scores = self.dot_product_attention(q, vs)
+        elif self.attention == "multiplicative":
+            scores = self.multiplicative_attention(q, vs)
         else:
             print("Not allowed attention type")
 
-        scores = torch.softmax(scores, dim=-1)
-        context = torch.mul(convolved_snipet, scores)
-        context = torch.sum(context, dim=-1)
 
-        convolved_pattern = torch.squeeze(convolved_pattern)
-        out = self.classifier(convolved_pattern, context)
+        scores = torch.softmax(scores, dim=1)
+        context = torch.mul(vs, scores)
+        context = torch.sum(context, dim=1)
+        q = torch.squeeze(q)
+
+        out = self.classifier(q, context)
         return torch.squeeze(out)
 
 
@@ -169,7 +189,7 @@ def main():
     train_loader, test_loader = get_data_loaders(**kwargs)
 
     print("Construct model")
-    model = ISSINet(11, 2, 128)
+    model = ISSINet(4, attention='multiplicative')
     model = model.to(device)
 
     optimizer = AdamW(model.parameters(), lr=lr)
@@ -185,3 +205,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
