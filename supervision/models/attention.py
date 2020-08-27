@@ -60,7 +60,8 @@ class ISSINet(nn.Module):
 
     def classifier(self, query, context):
         concat = torch.cat((query, context), dim=-1)
-        out = nn.ReLU(self.linear_1(concat))
+        concat = self.dropout(concat)
+        out = F.relu(self.linear_1(concat))
         out = self.linear_2(out)
         return out
 
