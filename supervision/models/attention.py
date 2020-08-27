@@ -4,17 +4,19 @@ from torch import nn
 from sklearn.model_selection import train_test_split
 import torch.nn.functional as F
 from torch.optim import AdamW
-from torch.utils.data.dataset import Dataset,
+from torch.utils.data.dataset import Dataset
 from torch.utils.data import DataLoader
 
 
 class ISSIDataset(Dataset):
     def __init__(self, patterns, snipets, labels):
 
-        self.patterns = patterns
-        self.snipets = snipets
+        self.patterns = patterns.reshape(-1, 1, patterns.shape[1], patterns.shape[2])
+        self.snipets = snipets.reshape(-1, 1, snipets.shape[1], snipets.shape[2])
         self.labels = labels
-
+        
+        print(self.snipets.shape)
+        print(self.labels.shape)
         assert len(self.patterns) == len(self.snipets)
         self.data_len = len(self.patterns)
 
@@ -79,22 +81,22 @@ class ISSINet(nn.Module):
 
         convolved_pattern = torch.squeeze(convolved_pattern)
         out = self.classifier(convolved_pattern, context)
-        return out
+        return torch.squeeze(out)
 
 
 def train(model, device, criterion, train_loader, optimizer, epoch, log_interval):
 
     model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, (pat, snip, target) in enumerate(train_loader):
+        pat, snip, target = pat.to(device), snip.to(device), target.to(device)
         optimizer.zero_grad()
-        output = model(data)
+        output = model(pat, snip)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
+                epoch, batch_idx * len(pat), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
 
@@ -103,12 +105,13 @@ def test(model, device, criterion, test_loader):
     test_loss = 0
     correct = 0
     with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += criterion(output, target, reduction='sum').item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+        for pat, snip, target in test_loader:
+            pat, snip, target = pat.to(device), snip.to(device), target.to(device)
+            output = model(pat, snip)
+            test_loss += criterion(output, target).item()  # sum up batch loss
+            y_pred = [int(i>=0.5) for i in output.cpu().numpy()]
+            y_true = [int(i>=0.5) for i in target.cpu().numpy()]
+            correct += sum([i==j for i,j in zip(y_pred, y_true)])
 
     test_loss /= len(test_loader.dataset)
 
@@ -139,27 +142,28 @@ def get_data_loaders(**kwargs):
 
 def main():
 
+    print("Define parameters")
     seed = 2020
     save_model = True
     log_interval = 10
-    epochs = 200
-    lr = 1e-3
-    batch_size = 128
-
-
+    epochs = 1000
+    lr = 1e-4
+    batch_size = 256
     use_cuda = True and torch.cuda.is_available()
+    print("Use_cuda: ", use_cuda)
+
     torch.manual_seed(seed)
     device = torch.device("cuda" if use_cuda else "cpu")
-
     kwargs = {'batch_size': batch_size}
     if use_cuda:
         kwargs.update({'num_workers': 1,
                        'pin_memory': True,
                        'shuffle': True},
                      )
-
+    print("Construct train/test data loaders")
     train_loader, test_loader = get_data_loaders(**kwargs)
 
+    print("Construct model")
     model = ISSINet(8, 2, 128)
     model = model.to(device)
 
