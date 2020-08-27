@@ -113,8 +113,8 @@ def test(model, device, criterion, test_loader):
             pat, snip, target = pat.to(device), snip.to(device), target.to(device)
             output = model(pat, snip)
             test_loss += criterion(output, target).item()  # sum up batch loss
-            y_pred = [int(i>=0.5) for i in output.cpu().numpy()]
-            y_true = [int(i>=0.5) for i in target.cpu().numpy()]
+            y_pred = [int(i>=0) for i in output.cpu().numpy()]
+            y_true = [i for i in target.cpu().numpy()]
             correct += sum([i==j for i,j in zip(y_pred, y_true)])
 
     test_loss /= len(test_loader.dataset)
