@@ -45,7 +45,10 @@ class ISSINet(nn.Module):
 
         self.attention = attention
         self.conv_1 = nn.Conv1d(1, self.n_filters, kernel_size=(self.time_dim, self.embedding_dim), stride=1)
-        self.linear_1 = nn.Linear(in_features=2* self.n_filters, out_features=1)
+        self.linear_1 = nn.Linear(in_features=2* self.n_filters, out_features=64)
+        self.linear_2 = nn.Linear(in_features=64, out_features=1)
+
+        self.dropout = nn.Dropout(0.3)
 
     def convolve(self, input):
         return self.conv_1(input)
@@ -57,7 +60,8 @@ class ISSINet(nn.Module):
 
     def classifier(self, query, context):
         concat = torch.cat((query, context), dim=-1)
-        out = self.linear_1(concat)
+        out = nn.ReLU(self.linear_1(concat))
+        out = self.linear_2(out)
         return out
 
     def multiplicative_attention(self):
@@ -164,7 +168,7 @@ def main():
     train_loader, test_loader = get_data_loaders(**kwargs)
 
     print("Construct model")
-    model = ISSINet(8, 2, 128)
+    model = ISSINet(11, 2, 128)
     model = model.to(device)
 
     optimizer = AdamW(model.parameters(), lr=lr)
