@@ -42,7 +42,7 @@ class ISSINet(nn.Module):
         self.conv = nn.Conv1d(1, self.n_filters, kernel_size=(2,2), stride=1)
         self.max_pool = nn.MaxPool2d(kernel_size=(2,2), stride=(1,2))
 
-        embedding_dim = 189
+        embedding_dim = 441
 
         if attention == 'multiplicative':
             temp_tensor = torch.rand(embedding_dim, embedding_dim)
@@ -54,7 +54,7 @@ class ISSINet(nn.Module):
         self.linear_1 = nn.Linear(in_features=embedding_dim*2, out_features=64)
         self.linear_2 = nn.Linear(in_features=64, out_features=1)
 
-        self.dropout = nn.Dropout(0.3)
+        self.dropout = nn.Dropout(0.4)
 
     def convolve(self, input):
         return self.conv_1(input)
@@ -103,8 +103,7 @@ class ISSINet(nn.Module):
         scores = torch.softmax(scores, dim=1)
         context = torch.mul(vs, scores)
         context = torch.sum(context, dim=1)
-        q = torch.squeeze(q)
-
+        q = torch.squeeze(q, dim=1)
         out = self.classifier(q, context)
         return torch.squeeze(out)
 
@@ -112,6 +111,7 @@ class ISSINet(nn.Module):
 def train(model, device, criterion, train_loader, optimizer, epoch, log_interval):
 
     model.train()
+    correct = 0
     for batch_idx, (pat, snip, target) in enumerate(train_loader):
         pat, snip, target = pat.to(device), snip.to(device), target.to(device)
         optimizer.zero_grad()
@@ -144,6 +144,8 @@ def test(model, device, criterion, test_loader):
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
+    return 100*correct / len(test_loader.dataset)
+
 def get_data_loaders(**kwargs):
 
     patterns =  np.load('tracks/snipets/patterns.npy', allow_pickle=True)
@@ -172,7 +174,7 @@ def main():
     save_model = True
     log_interval = 10
     epochs = 1000
-    lr = 1e-4
+    lr = 1e-3
     batch_size = 256
     use_cuda = True and torch.cuda.is_available()
     print("Use_cuda: ", use_cuda)
@@ -189,18 +191,22 @@ def main():
     train_loader, test_loader = get_data_loaders(**kwargs)
 
     print("Construct model")
-    model = ISSINet(4, attention='multiplicative')
+    model = ISSINet(8, attention='multiplicative')
     model = model.to(device)
 
     optimizer = AdamW(model.parameters(), lr=lr)
     criterion = nn.BCEWithLogitsLoss()
 
+
+    best_model, best_acc = None, 0
     for epoch in range(1, epochs + 1):
         train(model, device, criterion, train_loader, optimizer, epoch, log_interval)
-        test(model, device, criterion, test_loader)
-
-    if save_model==True:
-        torch.save(model.state_dict(), "issi_net.pt")
+        acc = test(model, device, criterion, test_loader)
+        if save_model == True:
+            if acc > best_acc:
+                best_acc = acc
+                print("new best :" , best_acc)
+                torch.save(model.state_dict(), "issi_net.pt")
 
 
 if __name__ == '__main__':

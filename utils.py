@@ -5,6 +5,11 @@ import soundfile as sf
 from scipy.io import wavfile
 
 
+def sigmoid(x):
+  return 1 / (1 + np.exp(-x))
+
+
+
 def softmax(x, T):
     x = x / T
     orig_shape = x.shape
